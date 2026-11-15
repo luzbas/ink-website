@@ -1,0 +1,1634 @@
+/*
+ * Ink Wheel: sumi ink on warm paper with one vermillion accent.
+ * The wheel is laid out in a 640 px box (see wheel.tsx) and scaled to its pose, so every size inside .ink-wheel is in
+ * those design pixels.
+ */
+
+@keyframes ink-fx-play {
+  from {
+    background-position-x: 0%;
+  }
+  to {
+    background-position-x: 100%;
+  }
+}
+
+@keyframes ink-cards-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+}
+
+.ink-skin {
+  --ink-paper: #ede8df;
+  --ink-paper-dim: rgba(237, 232, 223, 0.72);
+  --ink-black: #0b0b0c;
+  --ink-red: #d9472b;
+  --ink-red-deep: #b83a21;
+  --ink-fell: 'IM Fell English SC', 'IM Fell English', Georgia, serif;
+  --ink-sans: Inter, ui-sans-serif, system-ui, sans-serif;
+  --ink-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --media-font-family: var(--ink-sans);
+  --media-video-border-radius: 14px;
+
+  color: var(--ink-paper);
+  font-family: var(--ink-sans);
+  background: #0e0e0e;
+}
+
+/* `clip`, not `hidden`: a hidden overflow can still be scrolled by focusing something outside it (the docked wheel
+ * sits below the bottom edge), which would shift the whole player up. A clipped one cannot scroll at all. */
+.ink-stage {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+  overflow: clip;
+  isolation: isolate;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  background: radial-gradient(ellipse at 50% 35%, #1f1d1a 0%, #111110 60%, #0b0b0b 100%);
+}
+
+.ink-stage[data-fullscreen] {
+  height: 100%;
+}
+
+.ink-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* ------------------------------------------------------------------ video */
+
+.ink-screen {
+  position: absolute;
+  z-index: 1;
+  overflow: hidden;
+  background: #000;
+}
+
+.ink-stage[data-reflow] .ink-screen {
+  transition:
+    left 0.5s var(--ink-ease),
+    top 0.5s var(--ink-ease),
+    width 0.5s var(--ink-ease),
+    height 0.5s var(--ink-ease);
+}
+
+.ink-stage[data-layout='side'] .ink-screen {
+  box-shadow:
+    0 0 0 1px rgba(237, 232, 223, 0.12),
+    0 30px 80px rgba(0, 0, 0, 0.7);
+}
+
+.ink-screen video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: 0;
+  object-fit: contain;
+  transition: filter 0.4s;
+}
+
+.ink-skin .ink-screen video,
+.ink-skin[data-controls-visible] .ink-screen video {
+  --media-caption-track-y: var(--ink-caption-y, -10px);
+}
+
+/* The open wheel covers the middle of a full-player video: captions wait until it goes back to its corner. */
+.ink-stage[data-mode='full']:is([data-layout='overlay'], [data-layout='tall']) .ink-screen video::-webkit-media-text-track-container {
+  opacity: 0;
+}
+
+.ink-screen video::cue {
+  font-family: var(--ink-sans);
+  background: rgba(11, 11, 12, 0.82);
+  color: var(--ink-paper);
+}
+
+.ink-stage[data-paused] .ink-screen video,
+.ink-stage[data-paused] .ink-screen .media-poster {
+  filter: grayscale(0.85) brightness(0.75) contrast(1.1);
+}
+
+.ink-stage[data-drag='time'] .ink-screen video {
+  filter: grayscale(1) brightness(0.62) contrast(1.15);
+}
+
+.ink-stage[data-view='cards'] .ink-screen video,
+.ink-stage[data-view='cards'] .ink-screen .media-poster {
+  filter: blur(7px) grayscale(1) brightness(0.5);
+}
+
+.ink-scrim {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  background: #08080a;
+  opacity: 0;
+  transition: opacity 0.4s;
+}
+
+.ink-stage[data-mode='full'][data-paused]:is([data-layout='overlay'], [data-layout='tall']) .ink-scrim {
+  opacity: 0.42;
+}
+
+.ink-stage[data-paused]:is([data-layout='side'], [data-layout='stack']) .ink-scrim {
+  opacity: 0.22;
+}
+
+.ink-stage[data-drag='time'] .ink-scrim {
+  opacity: 0.3;
+}
+
+.ink-stage[data-view='cards'] .ink-scrim {
+  opacity: 0.55;
+}
+
+.ink-hit {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+
+.ink-screen .media-buffering-indicator,
+.ink-screen .video-status-indicators {
+  z-index: 4;
+}
+
+.ink-screen .media-error-dialog,
+.ink-screen [role='alertdialog'] {
+  z-index: 30;
+}
+
+.ink-ambient {
+  position: absolute;
+  z-index: 0;
+  inset: -60px;
+  width: calc(100% + 120px);
+  height: calc(100% + 120px);
+  filter: blur(40px) saturate(1.15) brightness(0.45);
+  opacity: 0;
+  transition: opacity 0.6s;
+  pointer-events: none;
+}
+
+.ink-ambient[data-on] {
+  opacity: 1;
+}
+
+/* Buffering: an ensō drawn with the ring's own brush, painting itself round and lifting off, turning slowly. */
+@property --ink-enso {
+  syntax: '<angle>';
+  inherits: false;
+  initial-value: 0deg;
+}
+
+@keyframes ink-enso-draw {
+  0% {
+    --ink-enso: 0deg;
+    opacity: 1;
+  }
+  65% {
+    --ink-enso: 335deg;
+    opacity: 1;
+  }
+  85% {
+    --ink-enso: 335deg;
+    opacity: 0;
+  }
+  100% {
+    --ink-enso: 0deg;
+    opacity: 0;
+  }
+}
+
+@keyframes ink-enso-turn {
+  to {
+    rotate: 360deg;
+  }
+}
+
+.ink-skin .ink-screen .media-buffering-indicator::before {
+  background: radial-gradient(circle at 50% 50%, rgba(8, 8, 10, 0.5) 0, rgba(8, 8, 10, 0.15) 60%, transparent 100%);
+  backdrop-filter: none;
+}
+
+.ink-skin .ink-enso {
+  position: relative;
+  z-index: 30;
+  width: 88px;
+  height: 88px;
+  filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.7));
+  animation: ink-enso-turn 4.5s linear infinite;
+}
+
+.ink-enso-stroke {
+  position: absolute;
+  inset: 0;
+  background: url('../assets/brush-ring.webp') center / 100% 100% no-repeat;
+  -webkit-mask-image: conic-gradient(from 0deg, #000 0deg var(--ink-enso), transparent var(--ink-enso));
+  mask-image: conic-gradient(from 0deg, #000 0deg var(--ink-enso), transparent var(--ink-enso));
+  animation: ink-enso-draw 1.7s cubic-bezier(0.45, 0.05, 0.3, 1) infinite;
+}
+
+/* The seal where the brush starts. */
+.ink-skin .ink-enso::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 0;
+  width: 10px;
+  height: 10px;
+  margin: -1px 0 0 -5px;
+  border-radius: 50%;
+  background: var(--ink-red);
+  box-shadow: 0 0 0 2px var(--ink-black);
+}
+
+.media-buffering-indicator:not([data-visible]) :is(.ink-enso, .ink-enso-stroke) {
+  animation: none;
+}
+
+/* ------------------------------------------------------------------ fx */
+
+.ink-fx-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.ink-fx-layer.ink-fx-front {
+  z-index: 7;
+}
+
+.ink-fx {
+  position: absolute;
+  pointer-events: none;
+  background-repeat: no-repeat;
+  background-position-y: 0;
+}
+
+.ink-fx-loop {
+  opacity: 0;
+  transition: opacity 0.5s;
+}
+
+.ink-fx-loop[data-on] {
+  opacity: 0.85;
+}
+
+/* The smoke keeps to grey ink, and stays faint behind the wheel. */
+.ink-fx-loop[data-fx='paused-smoke'] {
+  filter: grayscale(1) contrast(1.2);
+}
+
+.ink-fx-loop[data-fx='paused-smoke'][data-on] {
+  opacity: 0.5;
+}
+
+/* ------------------------------------------------------------------ wheel */
+
+.ink-wheel {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 6;
+  width: 640px;
+  height: 640px;
+  transform-origin: 50% 50%;
+  pointer-events: none;
+  transition:
+    transform 0.6s var(--ink-ease),
+    opacity 0.35s;
+}
+
+.ink-stage:not([data-ready]) .ink-wheel {
+  transition: none;
+}
+
+.ink-wheel[data-mode='dock'] {
+  opacity: 0.6;
+}
+
+.ink-wheel[data-mode='dock'] * {
+  pointer-events: none !important;
+}
+
+/* While the video plays, the resting wheel fades away once the player goes idle, and comes back on any mouse move,
+ * tap or key (keys count as activity, so it stays up while you work it from the keyboard). It stays while turned. */
+.ink-skin:not([data-controls-visible]) .ink-wheel[data-mode='compact']:not([data-drag]) {
+  opacity: 0;
+  transition:
+    transform 0.6s var(--ink-ease),
+    opacity 0.9s;
+}
+
+.ink-wheel-disc {
+  position: absolute;
+  left: 10px;
+  top: 0;
+  width: 620px;
+  height: 640px;
+  background: url('../assets/ink-disc.webp') center / 100% 100% no-repeat;
+  filter: drop-shadow(0 18px 40px rgba(0, 0, 0, 0.55));
+}
+
+.ink-ring {
+  position: absolute;
+  inset: 0;
+  background: url('../assets/brush-ring.webp') center / 583px 594px no-repeat;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-size: 100% 100%;
+  mask-size: 100% 100%;
+}
+
+.ink-ring-track {
+  opacity: 0.36;
+}
+
+/* Loaded but not yet played: between the track and the played part. */
+.ink-ring-buffer {
+  opacity: 0.55;
+  -webkit-mask-composite: source-in;
+  mask-composite: intersect;
+}
+
+.ink-stage[data-drag='time'][data-mode='full']:is([data-layout='overlay'], [data-layout='tall']) .ink-ring-buffer {
+  opacity: 0;
+}
+
+.ink-ring-fill {
+  -webkit-mask-composite: source-in;
+  mask-composite: intersect;
+}
+
+.ink-ring-marks {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.ink-ring-marks text {
+  font-family: var(--ink-fell);
+  font-size: 19px;
+  fill: var(--ink-paper);
+  stroke: var(--ink-black);
+  stroke-width: 4px;
+  paint-order: stroke;
+}
+
+/* A chapter already watched: its numeral turns vermillion. */
+.ink-ring-marks text[data-seen] {
+  fill: var(--ink-red);
+}
+
+.ink-ring-marks text.ink-ring-caption {
+  font-family: var(--ink-sans);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.24em;
+  fill: var(--ink-paper-dim);
+  stroke: none;
+}
+
+.ink-ring-marks line {
+  stroke: rgba(237, 232, 223, 0.55);
+  stroke-width: 2px;
+  stroke-linecap: round;
+}
+
+.ink-ring-grab {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  outline: none;
+  pointer-events: auto;
+  touch-action: none;
+  cursor: grab;
+}
+
+.ink-wheel[data-drag] .ink-ring-grab {
+  cursor: grabbing;
+}
+
+.ink-ring-grab:focus-visible {
+  box-shadow:
+    inset 0 0 0 calc(3px / var(--ink-wheel-scale, 1)) var(--ink-red),
+    0 0 0 calc(3px / var(--ink-wheel-scale, 1)) rgba(217, 71, 43, 0.35);
+}
+
+.ink-knob {
+  position: absolute;
+  width: 48px;
+  height: 48px;
+  margin: -24px 0 0 -24px;
+  pointer-events: none;
+  background: url('../assets/seal-knob.webp') center / contain no-repeat;
+  filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.7));
+  transition:
+    width 0.2s,
+    height 0.2s,
+    margin 0.2s;
+}
+
+.ink-wheel[data-drag] .ink-knob {
+  width: 64px;
+  height: 64px;
+  margin: -32px 0 0 -32px;
+}
+
+/* The still disc inside the ring: catches the pointer so the turn pointer shows only over the ring's band. */
+.ink-ring-still {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: auto;
+}
+
+.ink-wheel[data-mode='dock'] .ink-ring-still {
+  pointer-events: none;
+}
+
+/* Slots. They sit above the hub, so a tooltip from a lower slot is not hidden behind it. */
+
+.ink-slots {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.ink-slot {
+  position: absolute;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  color: var(--ink-paper);
+  cursor: pointer;
+  pointer-events: auto;
+  outline: none;
+}
+
+.ink-slot-face {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: url('../assets/slot-normal.webp') center / 100% 100% no-repeat;
+  transition:
+    transform 0.35s var(--ink-ease),
+    filter 0.35s;
+}
+
+/* Hovering the highlighted slot keeps its paper face (and its dark icon), it just lifts a little more. */
+.ink-slot:hover:not(:disabled, [data-selected]) .ink-slot-face {
+  background-image: url('../assets/slot-hover.webp');
+  transform: scale(1.1);
+}
+
+.ink-slot[data-selected]:hover:not(:disabled) .ink-slot-face {
+  transform: scale(1.4);
+}
+
+.ink-slot[data-selected] {
+  color: var(--ink-black);
+  z-index: 1;
+}
+
+.ink-slot[data-selected] .ink-slot-face {
+  background-image: url('../assets/slot-selected.webp');
+  transform: scale(1.32);
+  filter: drop-shadow(0 0 10px rgba(217, 71, 43, 0.55)) drop-shadow(0 10px 18px rgba(0, 0, 0, 0.6));
+}
+
+.ink-slot:focus-visible .ink-slot-face {
+  box-shadow: 0 0 0 calc(3px / var(--ink-wheel-scale, 1)) var(--ink-red);
+}
+
+.ink-slot:active:not(:disabled) .ink-slot-face {
+  transform: scale(1.2);
+}
+
+.ink-slot:disabled {
+  opacity: 0.32;
+  cursor: default;
+}
+
+.ink-slot-badge {
+  position: absolute;
+  right: -11px;
+  top: -9px;
+  min-width: 26px;
+  height: 22px;
+  padding: 0 6px;
+  box-sizing: border-box;
+  border-radius: 11px;
+  background: var(--ink-black);
+  border: 1px solid rgba(237, 232, 223, 0.7);
+  color: var(--ink-paper);
+  font: 600 11px/20px var(--ink-sans);
+  text-align: center;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.ink-slot[data-selected] .ink-slot-badge {
+  border-color: var(--ink-red);
+  transform: translate(6px, -6px);
+}
+
+/* The speed dial: the ring's steps are labelled with paper chips; the rest of the wheel steps back so the ring leads. */
+.ink-speed-chips {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+}
+
+.ink-speed-chip {
+  position: absolute;
+  width: 88px;
+  height: 44px;
+  margin: -22px 0 0 -44px;
+  padding: 0;
+  box-sizing: border-box;
+  border: 1.5px solid rgba(237, 232, 223, 0.45);
+  border-radius: 22px;
+  background: rgba(11, 11, 12, 0.92);
+  color: var(--ink-paper);
+  font: 400 22px/1 var(--ink-fell);
+  cursor: pointer;
+  pointer-events: auto;
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.5);
+  transition:
+    transform 0.2s var(--ink-ease),
+    background 0.2s,
+    border-color 0.2s;
+}
+
+.ink-speed-chip:hover {
+  border-color: var(--ink-paper);
+  transform: scale(1.06);
+}
+
+.ink-speed-chip[aria-pressed='true'] {
+  border: 2px solid var(--ink-red);
+  background: var(--ink-paper);
+  color: var(--ink-black);
+  box-shadow:
+    0 0 0 5px rgba(217, 71, 43, 0.35),
+    0 10px 22px rgba(0, 0, 0, 0.6);
+  transform: scale(1.16);
+}
+
+/* The quality dial: with Auto picked, the rendition it is playing right now wears a small vermillion seal. */
+.ink-speed-chip[data-active]::after {
+  content: '';
+  position: absolute;
+  top: -5px;
+  right: -2px;
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  background: var(--ink-red);
+  box-shadow: 0 0 0 2px rgba(11, 11, 12, 0.92);
+}
+
+.ink-speed-chips[data-dial='quality'] .ink-speed-chip {
+  font-size: 20px;
+}
+
+/* On the small corner wheel the chips are drawn larger, so they stay readable at its scale. */
+.ink-wheel[data-mode='compact'] .ink-speed-chip {
+  width: 120px;
+  height: 60px;
+  margin: -30px 0 0 -60px;
+  border-radius: 30px;
+  font-size: 30px;
+}
+
+.ink-wheel :is(.ink-slot, .ink-hub, .ink-ring-track) {
+  transition: opacity 0.3s;
+}
+
+.ink-wheel[data-speed] .ink-slot:not([data-selected]) {
+  opacity: 0.2;
+}
+
+.ink-wheel[data-speed] .ink-hub {
+  opacity: 0.7;
+}
+
+.ink-wheel[data-speed] .ink-ring-track {
+  opacity: 0.55;
+}
+
+.ink-wheel[data-speed] .ink-wheel-disc {
+  filter: drop-shadow(0 18px 40px rgba(0, 0, 0, 0.55)) brightness(0.7);
+}
+
+/* Slot tooltips: the name and shortcut, on hover or keyboard focus. Drawn at screen size whatever the wheel's scale,
+ * above the upper slots and below the lower ones, so they lean out toward the ring rather than over the hub. */
+.ink-slot-tip {
+  position: absolute;
+  left: 50%;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  background: rgba(11, 11, 12, 0.94);
+  border: 1px solid rgba(237, 232, 223, 0.35);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.5);
+  color: var(--ink-paper);
+  font: 500 12px/1 var(--ink-sans);
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s;
+  transition-delay: 0s;
+}
+
+.ink-slot-tip[data-side='above'] {
+  bottom: 100%;
+  transform-origin: 50% 100%;
+  transform: translate(-50%, calc(-14px / var(--ink-wheel-scale, 1))) scale(calc(1 / var(--ink-wheel-scale, 1)));
+}
+
+.ink-slot-tip[data-side='below'] {
+  top: 100%;
+  transform-origin: 50% 0;
+  transform: translate(-50%, calc(14px / var(--ink-wheel-scale, 1))) scale(calc(1 / var(--ink-wheel-scale, 1)));
+}
+
+.ink-slot-tip kbd {
+  display: inline-block;
+  min-width: 18px;
+  padding: 2px 5px;
+  box-sizing: border-box;
+  border: 1px solid rgba(237, 232, 223, 0.5);
+  border-radius: 4px;
+  font: 600 10px/1.2 var(--ink-sans);
+  text-align: center;
+  color: var(--ink-paper);
+}
+
+.ink-slot:hover .ink-slot-tip,
+.ink-slot:focus-visible .ink-slot-tip {
+  opacity: 1;
+  transition-delay: 0.25s;
+}
+
+.ink-slot:hover {
+  z-index: 3;
+}
+
+.ink-wheel:is([data-drag], [data-mode='dock']) .ink-slot-tip {
+  display: none;
+}
+
+/* Hub */
+
+.ink-hub {
+  position: absolute;
+  left: 204px;
+  top: 204px;
+  width: 232px;
+  height: 232px;
+  box-sizing: border-box;
+  padding: 26px;
+  border-radius: 50%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  text-align: center;
+  pointer-events: none;
+}
+
+.ink-hub-ink {
+  background: url('../assets/hub-ink.webp') center / 100% 100% no-repeat;
+  color: var(--ink-paper);
+}
+
+.ink-hub-paper {
+  background: url('../assets/hub-paper.webp') center / 100% 100% no-repeat;
+  color: var(--ink-black);
+}
+
+.ink-hub-meta {
+  font: 500 10px/1 var(--ink-sans);
+  letter-spacing: 0.2em;
+  color: rgba(237, 232, 223, 0.6);
+}
+
+.ink-hub-label {
+  font: 400 36px/1 var(--ink-fell);
+}
+
+.ink-hub-detail {
+  max-width: 172px;
+  font: 400 13px/1.35 var(--ink-sans);
+  color: rgba(237, 232, 223, 0.78);
+}
+
+.ink-hub-time {
+  margin-top: 4px;
+  font: 600 12px/1 var(--ink-sans);
+  letter-spacing: 0.08em;
+  font-variant-numeric: tabular-nums;
+}
+
+.ink-hub-big {
+  font: 400 44px/1 var(--ink-fell);
+  color: var(--ink-red-deep);
+}
+
+.ink-hub-title {
+  max-width: 180px;
+  font: 400 21px/1.1 var(--ink-fell);
+}
+
+.ink-hub-paper .ink-hub-time {
+  font-size: 15px;
+}
+
+.ink-hub-open {
+  position: absolute;
+  left: 204px;
+  top: 204px;
+  width: 232px;
+  height: 232px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+.ink-hub-open:focus-visible {
+  box-shadow: 0 0 0 calc(3px / var(--ink-wheel-scale, 1)) var(--ink-red);
+  outline: none;
+}
+
+/* The resting wheel is small: only the big print stays. */
+.ink-wheel[data-mode='compact'] :is(.ink-hub-meta, .ink-hub-detail, .ink-slot-badge, .ink-ring-marks text) {
+  display: none;
+}
+
+.ink-wheel[data-mode='compact'] .ink-hub-label {
+  font-size: 52px;
+}
+
+.ink-wheel[data-mode='compact'] .ink-hub-time {
+  font-size: 26px;
+}
+
+.ink-wheel[data-mode='compact'] .ink-hub-big {
+  font-size: 64px;
+}
+
+.ink-wheel[data-mode='compact'] .ink-hub-title {
+  display: none;
+}
+
+.ink-wheel[data-mode='compact'] .ink-hub-paper .ink-hub-time {
+  font-size: 30px;
+}
+
+.ink-wheel[data-mode='compact'] .ink-slot svg {
+  width: 32px;
+  height: 32px;
+}
+
+/* Scrubbing with the open wheel over the picture: the wheel steps aside, leaving only the ring and its seal, and the
+ * video shows in full colour, so you can see the frame you are turning to. Everything comes back on release. */
+.ink-wheel :is(.ink-wheel-disc, .ink-slots, .ink-hub, .ink-ring-marks, .ink-ring-track) {
+  transition: opacity 0.3s;
+}
+
+.ink-stage[data-drag='time'][data-mode='full']:is([data-layout='overlay'], [data-layout='tall']) .ink-wheel :is(.ink-wheel-disc, .ink-slots, .ink-hub, .ink-ring-marks, .ink-ring-track, .ink-fx-loop) {
+  opacity: 0;
+}
+
+.ink-stage[data-drag='time'][data-mode='full']:is([data-layout='overlay'], [data-layout='tall']) .ink-ring-fill {
+  filter: drop-shadow(0 0 6px rgba(0, 0, 0, 0.8));
+}
+
+.ink-stage[data-drag='time'][data-mode='full']:is([data-layout='overlay'], [data-layout='tall']) .ink-screen :is(video, .media-poster) {
+  filter: none;
+}
+
+.ink-stage[data-drag='time'][data-mode='full']:is([data-layout='overlay'], [data-layout='tall']) .ink-scrim {
+  opacity: 0;
+}
+
+/* The frame preview: a paper card that rides beside the ring while it is turned. */
+.ink-preview {
+  position: absolute;
+  z-index: 9;
+  box-sizing: border-box;
+  padding: 6px 6px 0;
+  border: 2px solid var(--ink-black);
+  border-radius: 6px;
+  background: var(--ink-paper);
+  color: var(--ink-black);
+  box-shadow:
+    0 0 0 2px rgba(217, 71, 43, 0.55),
+    0 14px 30px rgba(0, 0, 0, 0.55);
+  rotate: -1.5deg;
+  pointer-events: none;
+}
+
+/* Video.js sizes the thumbnail to its storyboard tile within these bounds, so pin both ends of each. */
+.ink-preview-thumb {
+  position: relative;
+  width: 200px;
+  height: 113px;
+  min-width: 200px;
+  max-width: 200px;
+  min-height: 113px;
+  max-height: 113px;
+  overflow: hidden;
+  border-radius: 3px;
+  background: var(--ink-black);
+}
+
+.ink-preview-thumb[data-hidden] {
+  display: none;
+}
+
+.ink-preview-image {
+  filter: sepia(0.15) contrast(1.05);
+}
+
+.ink-preview-meta {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  height: 30px;
+  padding: 0 2px;
+  line-height: 30px;
+  white-space: nowrap;
+}
+
+.ink-preview-roman {
+  font: 400 17px/1 var(--ink-fell);
+  color: var(--ink-red-deep);
+}
+
+.ink-preview-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font: 400 15px/1 var(--ink-fell);
+}
+
+.ink-preview-time {
+  font: 600 12px/1 var(--ink-sans);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ------------------------------------------------------------------ chrome */
+
+.ink-chrome {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  pointer-events: none;
+  transition: opacity 0.4s;
+}
+
+.ink-stage[data-view='cards'] .ink-chrome,
+.ink-skin:not([data-controls-visible]) .ink-stage[data-mode='compact'] .ink-chrome {
+  opacity: 0;
+}
+
+.ink-chrome-title {
+  position: absolute;
+  left: 26px;
+  top: 20px;
+  max-width: 46%;
+  font: 400 22px/1.15 var(--ink-fell);
+  text-shadow: 0 1px 12px rgba(0, 0, 0, 0.8);
+}
+
+.ink-chrome-chapter {
+  position: absolute;
+  right: 26px;
+  top: 22px;
+  max-width: 40%;
+  font: 400 18px/1.15 var(--ink-fell);
+  text-align: right;
+  text-shadow: 0 1px 12px rgba(0, 0, 0, 0.8);
+}
+
+.ink-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 12px;
+  border-radius: 16px;
+  background: rgba(11, 11, 12, 0.75);
+  font: 500 11px/1 var(--ink-sans);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  font-variant-numeric: tabular-nums;
+}
+
+.ink-chrome-state {
+  position: absolute;
+  left: 26px;
+  top: 56px;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+.ink-chrome-state::before {
+  content: '';
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--ink-red);
+}
+
+.ink-chrome-keys {
+  position: absolute;
+  left: 26px;
+  bottom: 22px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font: 500 12px/1 var(--ink-sans);
+  color: rgba(237, 232, 223, 0.8);
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+.ink-chrome-keys kbd,
+.ink-btn kbd {
+  display: inline-block;
+  min-width: 22px;
+  padding: 3px 6px;
+  box-sizing: border-box;
+  border: 1px solid rgba(237, 232, 223, 0.55);
+  border-radius: 4px;
+  font: 600 11px/1 var(--ink-sans);
+  text-align: center;
+  color: var(--ink-paper);
+}
+
+.ink-chrome-keys kbd + kbd {
+  margin-left: -2px;
+}
+
+.ink-stage[data-mode='full'] :is(.ink-chrome-state, .ink-chrome-keys),
+.ink-stage[data-drag] .ink-chrome-state {
+  opacity: 1;
+}
+
+.ink-stage[data-small] :is(.ink-chrome-keys) {
+  display: none;
+}
+
+.ink-stage[data-small] .ink-chrome-title {
+  left: 14px;
+  top: 12px;
+  font-size: 17px;
+}
+
+.ink-stage[data-small] .ink-chrome-chapter {
+  right: 14px;
+  top: 14px;
+  font-size: 15px;
+}
+
+.ink-stage[data-small] .ink-chrome-state {
+  left: 14px;
+  top: 42px;
+}
+
+/* Touch screens: no keyboard hints anywhere (the key bar, the shortcut in slot tips, the Esc on the cards' Back). */
+.ink-stage[data-touch] :is(.ink-chrome-keys, .ink-slot-tip kbd, .ink-btn kbd) {
+  display: none;
+}
+
+/* Tall video on a wide player: the info panel on the left. */
+.ink-info {
+  position: absolute;
+  z-index: 4;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 10px;
+  box-sizing: border-box;
+  padding-right: 12px;
+  pointer-events: none;
+}
+
+.ink-info-title {
+  font: 400 26px/1.15 var(--ink-fell);
+}
+
+.ink-info-kicker {
+  margin-top: 14px;
+  font: 600 11px/1 var(--ink-sans);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--ink-red);
+}
+
+.ink-info-chapter {
+  font: 400 34px/1.05 var(--ink-fell);
+}
+
+.ink-info-time {
+  font: 600 13px/1 var(--ink-sans);
+  letter-spacing: 0.08em;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-paper-dim);
+}
+
+.ink-info-bar {
+  position: relative;
+  height: 4px;
+  max-width: 240px;
+  border-radius: 2px;
+  background: rgba(237, 232, 223, 0.2);
+  overflow: hidden;
+}
+
+.ink-info-bar span {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: var(--ink-paper);
+}
+
+.ink-info-hint {
+  margin-top: 12px;
+  font: 400 12px/1.4 var(--ink-sans);
+  color: rgba(237, 232, 223, 0.6);
+}
+
+.ink-stage[data-small] .ink-info-title {
+  font-size: 19px;
+}
+
+.ink-stage[data-small] .ink-info-chapter {
+  font-size: 24px;
+}
+
+.ink-stage[data-small] .ink-info-hint {
+  display: none;
+}
+
+/* Wide video on a narrow player: the strip between the video and the wheel. */
+.ink-strip {
+  position: absolute;
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  box-sizing: border-box;
+  padding: 0 22px;
+  background: url('../assets/pill-ink.webp') center / 100% 82% no-repeat;
+}
+
+.ink-strip-chapter {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  min-width: 0;
+}
+
+.ink-strip-roman {
+  font: 400 22px/1 var(--ink-fell);
+  color: var(--ink-red);
+}
+
+.ink-strip-name {
+  overflow: hidden;
+  font: 400 19px/1.1 var(--ink-fell);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.ink-strip-time {
+  flex: none;
+  font: 600 12px/1 var(--ink-sans);
+  letter-spacing: 0.06em;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-paper-dim);
+}
+
+/* "Picked up at 0:41": the resume note, top centre, for a few seconds after a return visit. */
+@keyframes ink-resume-in {
+  from {
+    opacity: 0;
+    translate: -50% -10px;
+  }
+}
+
+.ink-resume {
+  position: absolute;
+  left: 50%;
+  top: 18px;
+  z-index: 12;
+  translate: -50% 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 6px 6px 16px;
+  border: 1.5px solid rgba(237, 232, 223, 0.55);
+  border-radius: 22px;
+  background: rgba(11, 11, 12, 0.88);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.5);
+  font: 500 13px/1 var(--ink-sans);
+  white-space: nowrap;
+  animation: ink-resume-in 0.4s var(--ink-ease);
+}
+
+.ink-resume b {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.ink-resume-over {
+  height: 30px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 15px;
+  background: var(--ink-paper);
+  color: var(--ink-black);
+  font: 400 15px/1 var(--ink-fell);
+  cursor: pointer;
+}
+
+.ink-resume-close {
+  width: 30px;
+  height: 30px;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  color: var(--ink-paper);
+  font: 400 20px/1 var(--ink-sans);
+  cursor: pointer;
+}
+
+.ink-resume :is(button):focus-visible {
+  outline: 2px solid var(--ink-red);
+  outline-offset: 2px;
+}
+
+/* ------------------------------------------------------------------ chapter cards */
+
+.ink-cards {
+  position: absolute;
+  inset: 0;
+  z-index: 8;
+  pointer-events: none;
+  animation: ink-cards-in 0.45s var(--ink-ease);
+}
+
+.ink-cards-head {
+  position: absolute;
+  left: 0;
+  right: 0;
+  text-align: center;
+  pointer-events: none;
+}
+
+.ink-cards-title {
+  margin: 0;
+  font: 400 34px/1 var(--ink-fell);
+  color: var(--ink-paper);
+}
+
+.ink-cards-hint {
+  margin: 8px 0 0;
+  font: 500 12px/1 var(--ink-sans);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(237, 232, 223, 0.75);
+}
+
+.ink-cards[data-small] .ink-cards-title {
+  font-size: 22px;
+  padding-top: 8px;
+}
+
+.ink-cards-back {
+  position: absolute;
+  left: 26px;
+  z-index: 2;
+}
+
+.ink-cards[data-small] .ink-cards-back {
+  left: 10px;
+  height: 36px;
+  padding: 0 12px 0 8px;
+}
+
+.ink-cards-pool {
+  position: absolute;
+  transform: translate(-50%, 0);
+  background: url('../assets/ink-pool.webp') center / 100% 100% no-repeat;
+  opacity: 0.92;
+  pointer-events: none;
+}
+
+.ink-cards-stage {
+  position: absolute;
+  inset: 0;
+  pointer-events: auto;
+  touch-action: pan-y;
+  cursor: grab;
+}
+
+.ink-cards-pivot {
+  position: absolute;
+  width: 0;
+  height: 0;
+  transform-style: preserve-3d;
+}
+
+.ink-card {
+  position: absolute;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--ink-black);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transform-style: preserve-3d;
+  transform-origin: 50% 50%;
+  outline: none;
+  transition:
+    transform 0.6s var(--ink-ease),
+    opacity 0.4s;
+}
+
+.ink-card-face {
+  position: absolute;
+  inset: 0;
+  border-radius: 8px;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+.ink-card-front {
+  background: url('../assets/card-front.webp') center / 100% 100% no-repeat;
+  filter: drop-shadow(0 18px 26px rgba(0, 0, 0, 0.55));
+}
+
+.ink-card[data-front] .ink-card-front {
+  filter: drop-shadow(0 0 3px var(--ink-red)) drop-shadow(0 0 10px rgba(217, 71, 43, 0.6)) drop-shadow(0 28px 36px rgba(0, 0, 0, 0.65));
+}
+
+.ink-card:focus-visible .ink-card-front {
+  outline: 3px solid var(--ink-red);
+  outline-offset: 4px;
+}
+
+.ink-card-back {
+  background: url('../assets/card-back.webp') center / 100% 100% no-repeat;
+  transform: rotateY(180deg);
+}
+
+.ink-card-top {
+  position: absolute;
+  left: 18%;
+  right: 17%;
+  top: 6.3%;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.ink-card-roman {
+  font: 400 19px/1 var(--ink-fell);
+}
+
+.ink-card-range {
+  font: 500 10px/1 var(--ink-sans);
+  color: #4a463f;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Video.js sizes the thumbnail to its storyboard tile within these bounds, so pin both ends of each. */
+.ink-card-thumb {
+  position: absolute;
+  left: 27px;
+  top: 39px;
+  width: 134px;
+  height: 72px;
+  min-width: 134px;
+  max-width: 134px;
+  min-height: 72px;
+  max-height: 72px;
+  overflow: hidden;
+  background: var(--ink-black);
+}
+
+.ink-card-thumb-image {
+  filter: sepia(0.2) saturate(0.9) contrast(1.05);
+}
+
+.ink-card[data-state='ahead'] .ink-card-thumb-image {
+  filter: grayscale(1) contrast(1.1) brightness(0.9);
+  opacity: 0.7;
+}
+
+.ink-card-name {
+  position: absolute;
+  left: 13%;
+  right: 13%;
+  top: 47%;
+  font: 400 20px/1.1 var(--ink-fell);
+}
+
+.ink-card-foot {
+  position: absolute;
+  left: 19%;
+  right: 15%;
+  bottom: 9.5%;
+  display: flex;
+  align-items: center;
+}
+
+.ink-card-len {
+  font: 500 11px/1 var(--ink-sans);
+  color: #4a463f;
+}
+
+.ink-card-stamp {
+  position: absolute;
+  right: 9%;
+  bottom: 5%;
+  width: 66px;
+  height: 66px;
+  background: center / contain no-repeat;
+  transform: rotate(-12deg);
+  mix-blend-mode: multiply;
+  opacity: 0.92;
+}
+
+.ink-card-stamp[data-stamp='now'] {
+  background-image: url('../assets/stamp-playing.webp');
+}
+
+.ink-card-stamp[data-stamp='seen'] {
+  background-image: url('../assets/stamp-seen.webp');
+}
+
+.ink-cards-controls {
+  position: absolute;
+  left: 0;
+  right: 0;
+  z-index: 2;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 14px;
+  pointer-events: none;
+}
+
+.ink-cards-controls > * {
+  pointer-events: auto;
+}
+
+.ink-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 44px;
+  min-width: 44px;
+  padding: 0 16px;
+  box-sizing: border-box;
+  border-radius: 22px;
+  border: 1.5px solid rgba(237, 232, 223, 0.6);
+  background: var(--ink-black);
+  color: var(--ink-paper);
+  font: 500 14px/1 var(--ink-sans);
+  cursor: pointer;
+  pointer-events: auto;
+  transition:
+    transform 0.2s,
+    border-color 0.2s;
+}
+
+.ink-btn:hover:not(:disabled) {
+  border-color: var(--ink-paper);
+  transform: translateY(-1px);
+}
+
+.ink-btn:focus-visible {
+  outline: 3px solid var(--ink-red);
+  outline-offset: 3px;
+}
+
+.ink-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.ink-btn-round {
+  width: 44px;
+  padding: 0;
+}
+
+.ink-btn-main {
+  height: 48px;
+  max-width: min(60vw, 360px);
+  padding: 0 22px;
+  border: 2px solid var(--ink-black);
+  border-radius: 24px;
+  background: var(--ink-paper);
+  color: var(--ink-black);
+  font: 400 19px/1 var(--ink-fell);
+  box-shadow: 0 0 0 4px rgba(217, 71, 43, 0.45);
+}
+
+.ink-btn-main span {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.ink-btn-main:hover:not(:disabled) {
+  border-color: var(--ink-black);
+}
+
+.ink-cards[data-small] .ink-cards-controls {
+  gap: 10px;
+}
+
+.ink-cards[data-small] .ink-btn-main {
+  height: 42px;
+  padding: 0 16px;
+  font-size: 16px;
+}
+
+/* ------------------------------------------------------------------ cursor */
+
+/*
+ * The ink pointer (cursor.tsx sets the drawings as custom properties, mouse and trackpad only). It is the browser's own
+ * cursor, so it never trails the mouse. Later rules win: ink anywhere, a seal over buttons and cards, turn arrows over
+ * the ring, a tight drop while the ring turns, corner marks around the chapter cards.
+ */
+.ink-stage[data-ink-cursor],
+.ink-stage[data-ink-cursor] * {
+  cursor: var(--ink-cursor) !important;
+}
+
+.ink-stage[data-ink-cursor] .ink-cards-stage {
+  cursor: var(--ink-cursor-close) !important;
+}
+
+.ink-stage[data-ink-cursor] :is(button:not(:disabled, .ink-hit), [role='slider'], a[href]),
+.ink-stage[data-ink-cursor] :is(button:not(:disabled, .ink-hit), [role='slider'], a[href]) * {
+  cursor: var(--ink-cursor-press) !important;
+}
+
+/* The ring is also a [role=slider], so these need to outrank the button rule above. */
+.ink-stage[data-ink-cursor] .ink-wheel .ink-ring-grab[role] {
+  cursor: var(--ink-cursor-turn) !important;
+}
+
+.ink-stage[data-ink-cursor] .ink-wheel[data-drag] .ink-ring-grab[role] {
+  cursor: var(--ink-cursor-turning) !important;
+}
+
+/* While the video plays and the player is idle, the pointer hides with the rest of the controls. */
+.ink-skin:not([data-controls-visible]) .ink-stage[data-ink-cursor]:not([data-paused], [data-drag]),
+.ink-skin:not([data-controls-visible]) .ink-stage[data-ink-cursor]:not([data-paused], [data-drag]) * {
+  cursor: none !important;
+}
+
+@keyframes ink-cursor-spin {
+  to {
+    rotate: 360deg;
+  }
+}
+
+@keyframes ink-cursor-ripple {
+  from {
+    opacity: 0.9;
+    scale: 0.3;
+  }
+  to {
+    opacity: 0;
+    scale: 1.7;
+  }
+}
+
+/* A ripple of vermillion where you click. */
+.ink-cursor-ripple {
+  position: absolute;
+  left: -18px;
+  top: -18px;
+  z-index: 40;
+  width: 36px;
+  height: 36px;
+  box-sizing: border-box;
+  border: 2px solid var(--ink-red);
+  border-radius: 50%;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.ink-cursor-ripple-go {
+  animation: ink-cursor-ripple 0.45s var(--ink-ease) forwards;
+}
+
+/* Arrows that spin around the pointer while the ring is turned. */
+.ink-cursor-spin {
+  position: absolute;
+  left: -20px;
+  top: -20px;
+  z-index: 40;
+  width: 40px;
+  height: 40px;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.ink-cursor-spin[data-on] {
+  opacity: 1;
+}
+
+.ink-cursor-spin svg {
+  display: block;
+  width: 40px;
+  height: 40px;
+  max-width: none;
+  animation: ink-cursor-spin 0.9s linear infinite;
+}
+
+.ink-cursor-spin path {
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.ink-cursor-spin-under {
+  stroke: var(--ink-black);
+  stroke-width: 4.8px;
+}
+
+.ink-cursor-spin-over {
+  stroke: var(--ink-paper);
+  stroke-width: 2.4px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ink-wheel,
+  .ink-screen,
+  .ink-card,
+  .ink-slot-face {
+    transition-duration: 0.01s !important;
+  }
+
+  .ink-cards,
+  .ink-cursor-spin svg,
+  .ink-cursor-ripple-go,
+  .ink-enso {
+    animation: none !important;
+  }
+
+  .ink-enso-stroke {
+    animation-duration: 3.4s;
+  }
+}

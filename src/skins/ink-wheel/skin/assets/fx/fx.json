@@ -1,0 +1,212 @@
+{
+ "play-shockwave": {
+  "frames": 12,
+  "frameWidth": 512,
+  "frameHeight": 512,
+  "durationsMs": [
+   60,
+   60,
+   60,
+   60,
+   60,
+   60,
+   60,
+   60,
+   60,
+   60,
+   60,
+   60
+  ],
+  "loop": false,
+  "sheet": "play-shockwave-sheet.webp",
+  "animated": "play-shockwave.webp"
+ },
+ "pause-cracks": {
+  "frames": 12,
+  "frameWidth": 512,
+  "frameHeight": 512,
+  "durationsMs": [
+   70,
+   70,
+   70,
+   70,
+   70,
+   70,
+   70,
+   70,
+   70,
+   70,
+   70,
+   70
+  ],
+  "loop": false,
+  "sheet": "pause-cracks-sheet.webp",
+  "animated": "pause-cracks.webp"
+ },
+ "seek-comet": {
+  "frames": 12,
+  "frameWidth": 512,
+  "frameHeight": 512,
+  "durationsMs": [
+   50,
+   50,
+   50,
+   50,
+   50,
+   50,
+   50,
+   50,
+   50,
+   50,
+   50,
+   50
+  ],
+  "loop": false,
+  "sheet": "seek-comet-sheet.webp",
+  "animated": "seek-comet.webp"
+ },
+ "slot-pop": {
+  "frames": 8,
+  "frameWidth": 512,
+  "frameHeight": 512,
+  "durationsMs": [
+   50,
+   50,
+   50,
+   50,
+   50,
+   50,
+   50,
+   50
+  ],
+  "loop": false,
+  "sheet": "slot-pop-sheet.webp",
+  "animated": "slot-pop.webp"
+ },
+ "scrub-spatter": {
+  "frames": 8,
+  "frameWidth": 512,
+  "frameHeight": 512,
+  "durationsMs": [
+   60,
+   60,
+   60,
+   60,
+   60,
+   60,
+   60,
+   60
+  ],
+  "loop": true,
+  "sheet": "scrub-spatter-sheet.webp",
+  "animated": "scrub-spatter.webp"
+ },
+ "volume-ripples": {
+  "frames": 10,
+  "frameWidth": 512,
+  "frameHeight": 512,
+  "durationsMs": [
+   80,
+   80,
+   80,
+   80,
+   80,
+   80,
+   80,
+   80,
+   80,
+   80
+  ],
+  "loop": true,
+  "sheet": "volume-ripples-sheet.webp",
+  "animated": "volume-ripples.webp"
+ },
+ "mute-blot": {
+  "frames": 8,
+  "frameWidth": 512,
+  "frameHeight": 512,
+  "durationsMs": [
+   60,
+   60,
+   60,
+   60,
+   60,
+   60,
+   60,
+   60
+  ],
+  "loop": false,
+  "sheet": "mute-blot-sheet.webp",
+  "animated": "mute-blot.webp"
+ },
+ "wheel-bloom": {
+  "frames": 12,
+  "frameWidth": 512,
+  "frameHeight": 512,
+  "durationsMs": [
+   60,
+   60,
+   60,
+   60,
+   60,
+   60,
+   60,
+   60,
+   60,
+   60,
+   60,
+   60
+  ],
+  "loop": false,
+  "sheet": "wheel-bloom-sheet.webp",
+  "animated": "wheel-bloom.webp"
+ },
+ "card-dissolve": {
+  "frames": 12,
+  "frameWidth": 416,
+  "frameHeight": 624,
+  "durationsMs": [
+   70,
+   70,
+   70,
+   70,
+   70,
+   70,
+   70,
+   70,
+   70,
+   70,
+   70,
+   70
+  ],
+  "loop": false,
+  "sheet": "card-dissolve-sheet.webp",
+  "animated": "card-dissolve.webp"
+ },
+ "paused-smoke": {
+  "frames": 16,
+  "frameWidth": 512,
+  "frameHeight": 512,
+  "durationsMs": [
+   120,
+   120,
+   120,
+   120,
+   120,
+   120,
+   120,
+   120,
+   120,
+   120,
+   120,
+   120,
+   120,
+   120,
+   120,
+   120
+  ],
+  "loop": true,
+  "sheet": "paused-smoke-sheet.webp",
+  "animated": "paused-smoke.webp"
+ }
+}

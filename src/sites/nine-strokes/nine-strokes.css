@@ -1,0 +1,933 @@
+/* Nine Strokes — a handscroll landing page for the Ink Wheel skin.
+   Paper, sumi ink and one vermillion, like the skin: IM Fell English SC for display, Inter for text, Yuji Boku for kanji.
+   .ns--h is the sideways handscroll (wide screens), .ns--v the plain vertical page (phones, reduced motion). */
+
+.ns {
+  --paper: #ede8df;
+  --paper-2: #f6f2ea;
+  --ink: #1a1714;
+  --ink-2: #3e3832;
+  --muted: #5b544c;
+  --red: #d9472b;
+  --red-text: #b03a22;
+  --display: 'IM Fell English SC', Georgia, serif;
+  --kanji: 'Yuji Boku', 'Hiragino Mincho ProN', serif;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: Inter, system-ui, sans-serif;
+  color-scheme: light;
+  overflow-x: clip;
+}
+
+.ns a {
+  color: inherit;
+}
+.ns a:hover {
+  color: var(--red-text);
+}
+.ns :is(a, button, input, [tabindex]):focus-visible {
+  outline: 3px solid var(--red-text);
+  outline-offset: 3px;
+}
+
+/* ---------- The scroll ---------- */
+
+.ns--h .ns-track {
+  position: relative;
+}
+.ns--h .ns-view {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
+}
+.ns--h .ns-scroller {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+.ns--h .ns-strip {
+  display: flex;
+  height: 100%;
+  width: max-content;
+  padding-left: 72px;
+}
+
+/* The silk mounting strip at the start of the scroll stays put while the paper slides under the roll. */
+.ns-mount {
+  position: absolute;
+  inset: 0 auto 0 0;
+  z-index: 3;
+  width: 72px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: repeating-linear-gradient(45deg, #221e1a 0 6px, var(--ink) 6px 12px);
+  border-right: 3px solid var(--red-text);
+}
+.ns-mount span {
+  writing-mode: vertical-rl;
+  font-family: var(--kanji);
+  font-size: 20px;
+  letter-spacing: 0.3em;
+  color: var(--paper);
+}
+
+/* The part still rolled up: it gets thinner as the paper unrolls, so it is the progress bar too. */
+.ns-roll {
+  position: absolute;
+  inset: 0 0 0 auto;
+  z-index: 3;
+  width: calc(20px + 54px * (1 - var(--p, 0)));
+  background: linear-gradient(to right, #c9c0b0, #f6f1e8 38%, #dad2c3 70%, #b5ac9b);
+  box-shadow: -14px 0 28px rgba(26, 23, 20, 0.18);
+}
+.ns-roll::before,
+.ns-roll::after {
+  content: '';
+  position: absolute;
+  left: -6px;
+  right: -6px;
+  height: 20px;
+  background: #2a211a;
+}
+.ns-roll::before {
+  top: 0;
+  border-radius: 0 0 50% 50%;
+}
+.ns-roll::after {
+  bottom: 0;
+  border-radius: 50% 50% 0 0;
+}
+
+/* ---------- Shared type ---------- */
+
+.ns-eyebrow {
+  margin: 0 0 14px;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--red-text);
+}
+.ns-h2 {
+  margin: 0;
+  font-family: var(--display);
+  font-weight: 400;
+  font-size: clamp(44px, 9vh, 92px);
+  line-height: 0.95;
+}
+.ns-copy {
+  margin: 20px 0 0;
+  font-size: clamp(16px, 2.1vh, 19px);
+  line-height: 1.6;
+  color: var(--ink-2);
+}
+.ns-meta,
+.ns-note {
+  margin: 22px 0 0;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+.ns-play {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  margin-top: 20px;
+  font-size: 15px;
+  font-weight: 600;
+  text-decoration: none;
+}
+.ns-play span {
+  border-bottom: 2px solid currentColor;
+  padding-bottom: 2px;
+}
+.ns-decal {
+  position: absolute;
+  pointer-events: none;
+}
+
+/* ---------- I · Hero ---------- */
+
+.ns-hero {
+  position: relative;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+}
+.ns--h .ns-hero {
+  flex: none;
+  width: calc(100vw - 72px);
+  height: 100%;
+  padding: 26px 112px 30px 40px;
+}
+.ns--v .ns-hero {
+  padding: 16px 20px 40px;
+  gap: 24px;
+}
+
+.ns-nav {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px 24px;
+}
+.ns-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  text-decoration: none;
+  min-height: 44px;
+}
+.ns-seal {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 3px;
+  background: var(--red);
+  color: var(--paper);
+  font-family: var(--kanji);
+  font-size: 25px;
+}
+.ns-brand__name {
+  font-family: var(--display);
+  font-size: 22px;
+  letter-spacing: 0.08em;
+}
+.ns-nav__links {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 30px;
+  font-size: 15px;
+  font-weight: 500;
+}
+.ns-nav__links a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  text-decoration: none;
+}
+.ns .ns-pill {
+  padding: 0 28px;
+  background: center / 100% 100% no-repeat;
+  color: var(--paper);
+  font-weight: 600;
+}
+.ns .ns-pill:hover {
+  color: #fff;
+}
+
+.ns-hero__body {
+  position: relative;
+  display: grid;
+  align-items: center;
+}
+.ns--h .ns-hero__body {
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 48px;
+}
+.ns--v .ns-hero__body {
+  gap: 28px;
+}
+.ns-hero__text {
+  position: relative;
+  max-width: 440px;
+}
+.ns-decal--flick {
+  width: 280px;
+  left: -40px;
+  top: -40px;
+  opacity: 0.16;
+  transform: rotate(8deg);
+}
+.ns-title {
+  position: relative;
+  margin: 0;
+  font-family: var(--display);
+  font-weight: 400;
+  line-height: 0.9;
+}
+.ns--h .ns-title {
+  font-size: clamp(72px, 7.4vw, 112px);
+}
+.ns--h .ns-title span {
+  display: block;
+}
+.ns--v .ns-title {
+  font-size: clamp(48px, 13vw, 96px);
+}
+.ns-lede {
+  position: relative;
+  margin: 22px 0 0;
+  max-width: 400px;
+  font-size: 18px;
+  line-height: 1.55;
+  color: var(--ink-2);
+}
+.ns-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px 22px;
+  margin-top: 28px;
+}
+.ns-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 52px;
+  padding: 0 26px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--ink);
+  color: var(--paper);
+  font: 600 16px Inter, system-ui, sans-serif;
+  cursor: pointer;
+}
+.ns-btn:hover {
+  background: #000;
+}
+.ns-link {
+  font-size: 16px;
+  font-weight: 500;
+  text-underline-offset: 5px;
+}
+
+/* The player: at least 640 px wide on the scroll so the skin keeps its overlay layout (medium wheel in the corner). */
+.ns-player {
+  margin: 0;
+}
+.ns--h .ns-player {
+  width: clamp(640px, min(calc((100dvh - 300px) * 16 / 9), calc(100vw - 720px)), 980px);
+}
+.ns--v .ns-player {
+  width: 100%;
+  max-width: 960px;
+}
+
+/* ---------- The player that follows the reader ---------- */
+
+.ns {
+  --dock-w: 480px;
+  --dock-gap: 20px;
+}
+.ns--h {
+  /* Clear of the roll on the right. */
+  --dock-right: 96px;
+}
+.ns--v {
+  --dock-w: min(calc(100vw - 24px), 380px);
+  --dock-gap: 12px;
+  --dock-right: 12px;
+}
+.ns-float.is-docked {
+  position: fixed;
+  z-index: 30;
+  right: var(--dock-right);
+  bottom: var(--dock-gap);
+  width: var(--dock-w);
+  border-radius: 6px;
+  background: var(--ink);
+  box-shadow: 0 24px 48px -12px rgba(26, 23, 20, 0.55);
+  overflow: hidden;
+}
+.ns-float.is-docked .ns-player__frame {
+  height: calc(var(--dock-w) * 9 / 16);
+  box-shadow: none;
+}
+.ns-float__bar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 4px 0 14px;
+  color: var(--paper);
+}
+.ns-float__title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--display);
+  font-size: 16px;
+}
+.ns-float__btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--paper);
+  font: 500 13px Inter, system-ui, sans-serif;
+  cursor: pointer;
+}
+.ns-float__btn:hover {
+  background: rgba(237, 232, 223, 0.12);
+}
+.ns-float__close {
+  padding: 0;
+}
+.ns-player__frame {
+  background: var(--ink);
+  box-shadow:
+    0 0 0 6px var(--ink),
+    0 30px 60px -20px rgba(26, 23, 20, 0.45);
+  outline: none;
+}
+.ns-player__cap {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 16px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+/* The chapter rail: the scroll's panels are the trailer's chapters. */
+.ns-rail {
+  position: relative;
+  z-index: 1;
+}
+.ns-rail__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  margin-bottom: 14px;
+}
+.ns-rail__title {
+  font-family: var(--display);
+  font-size: 20px;
+}
+.ns-rail__note {
+  font-size: 13px;
+  color: var(--muted);
+}
+.ns-rail__list {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.ns-rail__list::before {
+  content: '';
+  position: absolute;
+  left: 11px;
+  right: 11px;
+  top: 10px;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--ink);
+  opacity: 0.8;
+}
+.ns-rail__list a {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-bottom: 4px;
+  text-decoration: none;
+}
+.ns-rail__dot {
+  width: 24px;
+  height: 24px;
+  border: 3px solid var(--ink);
+  border-radius: 50%;
+  background: var(--paper);
+  box-shadow: 0 0 0 4px var(--paper);
+  transition: background-color 0.3s, border-color 0.3s;
+}
+.ns-rail__list a.is-seen .ns-rail__dot {
+  background: var(--ink);
+}
+.ns-rail__list a.is-current .ns-rail__dot {
+  background: var(--red);
+  border-color: var(--red);
+}
+.ns-rail__time {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+}
+.ns-rail__list a.is-current .ns-rail__time {
+  color: var(--red-text);
+}
+.ns-rail__name {
+  font-family: var(--display);
+  font-size: 18px;
+  line-height: 1.15;
+}
+.ns-decal--spatter {
+  width: 240px;
+  left: -60px;
+  bottom: 70px;
+  opacity: 0.3;
+  transform: rotate(-14deg);
+}
+
+/* ---------- Panels II–V ---------- */
+
+.ns-panel {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.ns--h .ns-panel {
+  flex: none;
+  height: 100%;
+  padding: 9vh 6vh;
+  gap: 6vh;
+}
+.ns--v .ns-panel {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 28px;
+  padding: 56px 20px 0;
+}
+.ns-panel__text {
+  position: relative;
+  z-index: 1;
+  flex: none;
+}
+.ns--h .ns-panel__text {
+  width: 40vh;
+  min-width: 320px;
+}
+
+/* II · The Hunt */
+.ns--h .ns-panel--hunt {
+  width: 175vh;
+}
+.ns-hunt__art {
+  display: block;
+  min-width: 0;
+  object-fit: contain;
+  -webkit-mask-image: radial-gradient(ellipse 72% 70% at 50% 50%, #000 62%, transparent 100%);
+  mask-image: radial-gradient(ellipse 72% 70% at 50% 50%, #000 62%, transparent 100%);
+}
+.ns--h .ns-hunt__art {
+  flex: none;
+  height: 66vh;
+  width: auto;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+}
+.ns--v .ns-hunt__art {
+  width: 100%;
+  height: auto;
+}
+
+/* III · The Wheel: the skin's own disc and ring, with the nine strokes around it. */
+.ns--h .ns-panel--wheel {
+  width: 160vh;
+}
+.ns-ghost {
+  position: absolute;
+  left: 2vh;
+  bottom: -8vh;
+  font-family: var(--kanji);
+  font-size: 60vh;
+  line-height: 1;
+  opacity: 0.06;
+  pointer-events: none;
+}
+.ns--v .ns-ghost {
+  font-size: 260px;
+  left: auto;
+  right: -20px;
+  top: 20px;
+  bottom: auto;
+}
+.ns-wheel {
+  position: relative;
+  flex: none;
+  aspect-ratio: 1;
+}
+.ns--h .ns-wheel {
+  height: 82vh;
+  margin-left: auto;
+  margin-right: auto;
+}
+.ns--v .ns-wheel {
+  width: min(100%, 420px);
+  margin: 0 auto;
+}
+.ns-wheel__ring,
+.ns-wheel__disc,
+.ns-wheel__hub {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+}
+.ns-wheel__ring {
+  width: 78%;
+  filter: brightness(0.55);
+}
+.ns-wheel__disc {
+  width: 62%;
+}
+.ns-wheel__hub {
+  width: 22%;
+  aspect-ratio: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  container-type: inline-size;
+}
+.ns-wheel__hub img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+.ns-wheel__hub-k {
+  position: relative;
+  font-family: var(--kanji);
+  font-size: 44cqw;
+  line-height: 1;
+  color: var(--red);
+}
+.ns-wheel__hub-name {
+  position: relative;
+  font-family: var(--display);
+  font-size: 13cqw;
+}
+.ns-wheel__strokes {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.ns-wheel__strokes li {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 84px;
+  padding: 6px 8px;
+  border-radius: 4px;
+}
+.ns-wheel__strokes li.is-seal {
+  background: var(--red);
+  color: var(--paper);
+}
+.ns-wheel__k {
+  font-family: var(--kanji);
+  font-size: clamp(20px, 3.4vh, 30px);
+  line-height: 1;
+}
+.ns-wheel__name {
+  margin-top: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+/* IV · The Seal: the skin's paper cards in a fan over its ink pool. */
+.ns--h .ns-panel--seal {
+  width: 190vh;
+}
+.ns-fan {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+}
+.ns--h .ns-fan {
+  height: 72vh;
+}
+.ns-fan__pool {
+  position: absolute;
+  left: 4%;
+  right: 4%;
+  bottom: 0;
+  width: 92%;
+  height: 34%;
+  object-fit: fill;
+}
+.ns-fan__cards {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.ns-card {
+  position: relative;
+  aspect-ratio: 2 / 3;
+  container-type: inline-size;
+  filter: drop-shadow(0 18px 16px rgba(26, 23, 20, 0.35));
+  transition: transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1.2);
+}
+.ns--h .ns-card {
+  position: absolute;
+  height: 62%;
+}
+.ns--h .ns-card--0 { left: 2%; top: 14%; transform: rotate(-8deg); }
+.ns--h .ns-card--1 { left: 20%; top: 8%; transform: rotate(-4deg); }
+.ns--h .ns-card--2 { left: 38%; top: 3%; }
+.ns--h .ns-card--3 { left: 56%; top: 8%; transform: rotate(4deg); }
+.ns--h .ns-card--4 { left: 74%; top: 14%; transform: rotate(8deg); }
+.ns--h .ns-card.is-playing {
+  z-index: 1;
+  transform: translateY(-5%) scale(1.04);
+}
+.ns--v .ns-fan__cards {
+  position: relative;
+  display: flex;
+  gap: 14px;
+  overflow-x: auto;
+  padding: 24px 20px 30px;
+  margin: 0 -20px;
+  scroll-snap-type: x mandatory;
+}
+.ns--v .ns-card {
+  flex: none;
+  width: 150px;
+  scroll-snap-align: center;
+}
+.ns--v .ns-fan__pool {
+  height: 40%;
+}
+.ns-card__bg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+/* Inside the card art's picture window (its upper part); the name goes on the blank paper below. */
+.ns-card__art {
+  position: absolute;
+  left: 16%;
+  top: 12%;
+  width: 68%;
+  height: 34%;
+}
+.ns-card__name,
+.ns-card__kanji {
+  position: absolute;
+  left: 6%;
+  right: 6%;
+  text-align: center;
+}
+.ns-card__name {
+  top: 64%;
+  font-family: var(--display);
+  font-size: 10cqw;
+  line-height: 1.1;
+}
+.ns-card__kanji {
+  top: 76%;
+  font-family: var(--kanji);
+  font-size: 7cqw;
+  color: var(--muted);
+}
+.ns-card__stamp {
+  position: absolute;
+  right: -6%;
+  top: 78%;
+  width: 40%;
+  transform: rotate(-12deg);
+  animation: ns-stamp 0.35s cubic-bezier(0.3, 1.6, 0.5, 1) both;
+}
+.ns-card__stamp--playing {
+  top: -10%;
+  right: -12%;
+  width: 56%;
+  transform: rotate(12deg);
+}
+@keyframes ns-stamp {
+  from {
+    opacity: 0;
+    scale: 1.6;
+  }
+}
+
+/* V · Press your seal */
+.ns--h .ns-panel--wish {
+  width: 140vh;
+}
+.ns-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 26px;
+}
+.ns-form label {
+  font-size: 14px;
+  font-weight: 600;
+}
+.ns-form input {
+  height: 52px;
+  padding: 0 16px;
+  border: 0;
+  border-bottom: 3px solid var(--ink);
+  border-radius: 4px 4px 0 0;
+  background: var(--paper-2);
+  color: var(--ink);
+  font: 17px Inter, system-ui, sans-serif;
+}
+.ns-form input::placeholder {
+  color: #8a8279;
+}
+.ns-done {
+  margin: 26px 0 0;
+  font-family: var(--display);
+  font-size: 22px;
+  color: var(--red-text);
+}
+.ns-press {
+  position: relative;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+.ns-decal--press {
+  width: 140%;
+  max-width: 460px;
+  opacity: 0.5;
+  transform: rotate(20deg);
+}
+.ns-press__seal {
+  position: relative;
+  width: min(36vh, 300px);
+  aspect-ratio: 1;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  cursor: pointer;
+  container-type: inline-size;
+  transition: transform 0.15s;
+}
+.ns--v .ns-press__seal {
+  width: 210px;
+}
+.ns-press__seal:hover:not(:disabled) {
+  transform: rotate(-4deg) scale(1.03);
+}
+.ns-press__seal:active:not(:disabled),
+.ns-press__seal.is-pressed {
+  transform: scale(0.94);
+}
+.ns-press__seal img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+.ns-press__seal span {
+  position: relative;
+  font-family: var(--kanji);
+  font-size: 46cqw;
+  line-height: 1;
+  color: var(--red);
+}
+.ns-press__seal:disabled {
+  cursor: default;
+}
+.ns-press__label {
+  position: relative;
+  margin: 14px 0 0;
+  font-family: var(--display);
+  font-size: 22px;
+}
+.ns-footer {
+  margin: 0;
+  font-size: 13px;
+  color: var(--muted);
+}
+.ns--h .ns-footer {
+  position: absolute;
+  left: 6vh;
+  bottom: 4vh;
+}
+
+/* The wooden rod at the end of the scroll. */
+.ns-rod {
+  position: relative;
+  flex: none;
+}
+.ns--h .ns-rod {
+  width: 150px;
+  height: 100%;
+}
+.ns--v .ns-rod {
+  height: 80px;
+  margin-top: 48px;
+}
+.ns-rod__bar {
+  position: absolute;
+  border-radius: 16px;
+  background: linear-gradient(to right, #1c150f, #4a3a2c 45%, #1c150f);
+}
+.ns--h .ns-rod__bar {
+  left: 40px;
+  top: 30px;
+  bottom: 30px;
+  width: 32px;
+}
+.ns--v .ns-rod__bar {
+  left: 22px;
+  right: 22px;
+  top: 26px;
+  height: 28px;
+  background: linear-gradient(to bottom, #1c150f, #4a3a2c 45%, #1c150f);
+}
+.ns-rod__knob {
+  position: absolute;
+  background: var(--red);
+}
+.ns--h .ns-rod__knob {
+  left: 34px;
+  width: 44px;
+  height: 40px;
+}
+.ns--h .ns-rod__knob--a {
+  top: 0;
+  border-radius: 10px 10px 18px 18px;
+}
+.ns--h .ns-rod__knob--b {
+  bottom: 0;
+  border-radius: 18px 18px 10px 10px;
+}
+.ns--v .ns-rod__knob {
+  top: 20px;
+  width: 32px;
+  height: 40px;
+}
+.ns--v .ns-rod__knob--a {
+  left: 0;
+  border-radius: 10px 16px 16px 10px;
+}
+.ns--v .ns-rod__knob--b {
+  right: 0;
+  border-radius: 16px 10px 10px 16px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ns-card,
+  .ns-press__seal,
+  .ns-rail__dot {
+    transition: none;
+  }
+  .ns-card__stamp {
+    animation: none;
+  }
+}
