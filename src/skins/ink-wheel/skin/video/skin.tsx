@@ -25,8 +25,8 @@ const FONT_URL = 'https://fonts.googleapis.com/css2?family=IM+Fell+English+SC&fa
  *
  * - While the video plays, a medium wheel rests in the bottom-right corner and works as it is. Pause (Space, K, a click
  *   on the video or the Pause slot) and the full wheel comes to the middle while the picture turns to grey ink.
- * - Turn the outer ring to scrub from wherever the playhead is: one full turn is the whole video, and chapter starts
- *   catch the ring like detents. With Volume highlighted the ring becomes a 300° volume dial.
+ * - Turn the outer ring to scrub from wherever the playhead is: one full turn is the whole video, and it turns freely
+ *   from chapter to chapter (a click marks each boundary). With Volume highlighted the ring becomes a 300° volume dial.
  * - Chapters open as paper cards on a 3D carousel, with a frame from each chapter in its window.
  * - The layout follows the video's shape (read from its metadata) and the room it has: wide videos fill the player or,
  *   on a narrow screen, stack above the wheel; tall videos stand beside the wheel on a wide screen.

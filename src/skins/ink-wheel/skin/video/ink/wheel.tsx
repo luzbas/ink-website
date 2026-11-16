@@ -27,8 +27,6 @@ const GAP = 1.4;
 /** The volume dial spans -150° to 150°. */
 const VOL_FROM = -150;
 const VOL_SPAN = 300;
-/** Snap to a chapter start when the ring is let go this close to it (seconds). */
-const DETENT = 0.9;
 const SEEK_STEP = 10;
 
 export const SLOTS: { id: SlotId; label: string }[] = [
@@ -300,7 +298,7 @@ export function InkWheel({ pose, mode, sel, cues, reducedMotion, touch = false, 
   const wheelRef = useRef<HTMLDivElement>(null);
 
   // The dials click as they turn: volume once per 5%, pitched up as it gets louder; speed once per step, pitched by
-  // speed. Whatever turned them (ring, scroll, keys, number keys, chips) is heard the same way.
+  // speed. Whatever turned them (ring, keys, number keys, chips) is heard the same way.
   const volStep = Math.round(level * 20);
   const lastVolStep = useRef(volStep);
   useEffect(() => {
@@ -321,121 +319,6 @@ export function InkWheel({ pose, mode, sel, cues, reducedMotion, touch = false, 
     playSfx('click', { rate: 0.8 + (shownQualIdx / Math.max(1, qualOptions.length - 1)) * 0.6, gain: 1.1, gap: 35 });
   }, [shownQualIdx, qualOptions.length]);
 
-  // Scrolling over the wheel turns the ring: each notch of a mouse wheel is 2 seconds (or 5% volume in volume mode),
-  // and a trackpad scrubs smoothly. A scroll counts as one turn until it pauses, so the preview card, the paper hub and
-  // the clear frame behave as they do when the ring is dragged.
-  useEffect(() => {
-    const el = wheelRef.current;
-    if (!el) return;
-    let session: { kind: RingDrag; t: number; v: number; lastSeek: number; ch: number; acc: number; idx: number } | null = null;
-    let idle = 0;
-
-    const finish = () => {
-      if (!session) return;
-      if (session.kind === 'time') {
-        void live.current.store.seek(session.t);
-        callbacks.current.onScrub?.(null);
-      }
-      if (session.kind === 'quality') {
-        if (session.idx !== live.current.qualIdx) live.current.pickQuality(session.idx);
-        setQualPreview(null);
-      }
-      session = null;
-      setDrag(null);
-      callbacks.current.onDragChange(null);
-    };
-
-    const onWheel = (e: WheelEvent) => {
-      const {
-        store: st,
-        time: t0,
-        duration: d,
-        volume: v0,
-        volMode: vm,
-        speedMode: sm,
-        speeds: sp,
-        speedIdx: si,
-        qualMode: qm,
-        qualIdx: qi,
-        qualCount: qn,
-        cues: cs,
-        drag: dragging,
-        mode: m,
-      } = live.current;
-      if (m === 'dock' || e.ctrlKey) return;
-      if (dragging && !session) return;
-      const px = (e.deltaMode === 1 ? 33 : e.deltaMode === 2 ? 400 : 1) * (Math.abs(e.deltaY) >= Math.abs(e.deltaX) ? e.deltaY : e.deltaX);
-      if (!px) return;
-      const kind: RingDrag = vm ? 'vol' : sm ? 'speed' : qm ? 'quality' : 'time';
-      if (kind === 'time' && !(d > 0)) return;
-      if (kind === 'quality' && qn < 2) return;
-      e.preventDefault();
-
-      if (!session || session.kind !== kind) {
-        finish();
-        session = { kind, t: t0, v: v0, lastSeek: 0, ch: chapterAt(cs, t0), acc: 0, idx: kind === 'quality' ? qi : si };
-        setDrag(session.kind);
-        callbacks.current.onDragChange(session.kind);
-      }
-
-      if (session.kind === 'speed') {
-        // One speed per notch (100 px of scroll); up is faster, like volume.
-        session.acc += px;
-        while (Math.abs(session.acc) >= 100) {
-          const step = session.acc > 0 ? -1 : 1;
-          session.acc -= Math.sign(session.acc) * 100;
-          const next = Math.min(sp.length - 1, Math.max(0, session.idx + step));
-          if (next !== session.idx) {
-            session.idx = next;
-            st.setPlaybackRate(sp[next]!);
-          }
-        }
-      } else if (session.kind === 'quality') {
-        // One quality per notch, up for sharper; picked when the scroll pauses.
-        session.acc += px;
-        while (Math.abs(session.acc) >= 100) {
-          const step = session.acc > 0 ? -1 : 1;
-          session.acc -= Math.sign(session.acc) * 100;
-          const next = Math.min(qn - 1, Math.max(0, session.idx + step));
-          if (next !== session.idx) {
-            session.idx = next;
-            setQualPreview(next);
-          }
-        }
-      } else if (session.kind === 'vol') {
-        session.v = Math.min(1, Math.max(0, session.v - (px / 100) * 0.05));
-        st.setVolume(session.v);
-        st.setMuted(session.v === 0);
-      } else {
-        session.t = Math.min(d - 0.05, Math.max(0, session.t + (px / 100) * 2));
-        setScrubT(session.t);
-        callbacks.current.onScrub?.(session.t);
-        const ch = chapterAt(cs, session.t);
-        if (ch !== session.ch) {
-          session.ch = ch;
-          playSfx('click', { rate: 1.3, gain: 1.15, gap: 60 });
-          try {
-            navigator.vibrate?.(12);
-          } catch {
-            /* ignore */
-          }
-        }
-        const now = performance.now();
-        if (now - session.lastSeek > 90) {
-          session.lastSeek = now;
-          void st.seek(session.t);
-        }
-      }
-      window.clearTimeout(idle);
-      idle = window.setTimeout(finish, 650);
-    };
-
-    el.addEventListener('wheel', onWheel, { passive: false });
-    return () => {
-      el.removeEventListener('wheel', onWheel);
-      window.clearTimeout(idle);
-    };
-  }, []);
   useEffect(() => {
     const el = ringRef.current;
     if (!el) return;
@@ -459,12 +342,9 @@ export function InkWheel({ pose, mode, sel, cues, reducedMotion, touch = false, 
       return { deg: ((Math.atan2(dx, -dy) * 180) / Math.PI + 360) % 360, dist: Math.hypot(dx, dy) * (BOX / r.width) };
     };
 
-    const snap = (to: number) => {
-      const { cues: cs, duration: d } = live.current;
-      let v = Math.min(Math.max(0, d - 0.05), Math.max(0, to));
-      for (const c of cs) if (Math.abs(v - c.startTime) < DETENT) v = c.startTime;
-      return v;
-    };
+    // The ring turns freely across chapter boundaries: no detents, so the knob never catches at a chapter's edge.
+    // Crossing into another chapter still clicks (and buzzes on phones that can).
+    const clamp = (to: number) => Math.min(Math.max(0, live.current.duration - 0.05), Math.max(0, to));
 
     const down = (e: PointerEvent) => {
       if (e.button !== 0) return;
@@ -531,7 +411,7 @@ export function InkWheel({ pose, mode, sel, cues, reducedMotion, touch = false, 
         if (v > 0) st.setMuted(false);
         return;
       }
-      const next = snap(g.startT + (g.turned / 360) * d);
+      const next = clamp(g.startT + (g.turned / 360) * d);
       g.t = next;
       setScrubT(next);
       callbacks.current.onScrub?.(next);
@@ -806,9 +686,9 @@ export function InkWheel({ pose, mode, sel, cues, reducedMotion, touch = false, 
       case 'chap':
         return cue ? `${roman(ci)} · ${cue.text}` : 'No chapters';
       case 'speed':
-        return 'Turn the ring, scroll or click a speed · < >';
+        return 'Turn the ring or click a speed · < >';
       case 'quality':
-        return qualAvailable ? (activeOpt ? `Now ${activeOpt.label} · turn the ring or click one` : 'Turn the ring, scroll or click a quality') : 'One quality only';
+        return qualAvailable ? (activeOpt ? `Now ${activeOpt.label} · turn the ring or click one` : 'Turn the ring or click a quality') : 'One quality only';
       case 'pip':
         return 'Picture in picture · I';
       case 'fs':
